@@ -10,9 +10,15 @@ type DayCell = {
   key: string;
   day: number | null;
   isToday: boolean;
+  isSelected: boolean;
+  weekday: number | null;
 };
 
-function buildMonthGrid(year: number, month: number): DayCell[] {
+function buildMonthGrid(
+  year: number,
+  month: number,
+  selectedDate?: Date,
+): DayCell[] {
   const firstDay = new Date(year, month - 1, 1);
   const startWeekday = firstDay.getDay();
   const daysInMonth = new Date(year, month, 0).getDate();
@@ -26,6 +32,8 @@ function buildMonthGrid(year: number, month: number): DayCell[] {
       key: `empty-${i}`,
       day: null,
       isToday: false,
+      isSelected: false,
+      weekday: null,
     });
   }
 
@@ -36,10 +44,19 @@ function buildMonthGrid(year: number, month: number): DayCell[] {
       date.getMonth() === today.getMonth() &&
       date.getDate() === today.getDate();
 
+    const isSelected =
+      !!selectedDate &&
+      date.getFullYear() === selectedDate.getFullYear() &&
+      date.getMonth() === selectedDate.getMonth() &&
+      date.getDate() === selectedDate.getDate();
+    const weekday = date.getDay();
+
     cells.push({
       key: `day-${day}`,
       day,
       isToday,
+      isSelected,
+      weekday,
     });
   }
 
@@ -50,11 +67,12 @@ export const MonthCalendarScreen: React.FC<Props> = ({
   route,
   navigation,
 }) => {
-  const { year, month } = route.params;
+  const { year, month, date } = route.params;
+  const selectedDate = date ? new Date(date) : undefined;
 
   const grid = useMemo(
-    () => buildMonthGrid(year, month),
-    [year, month],
+    () => buildMonthGrid(year, month, selectedDate),
+    [year, month, date],
   );
 
   const handlePressDay = (day: number | null) => {
@@ -93,18 +111,25 @@ export const MonthCalendarScreen: React.FC<Props> = ({
           return (
             <TouchableOpacity
               key={cell.key}
-              style={[
-                styles.dayCell,
-                cell.isToday && styles.dayCellToday,
-              ]}
+              style={styles.dayCell}
               onPress={() => handlePressDay(cell.day)}>
-              <Text
+              <View
                 style={[
-                  styles.dayText,
-                  cell.isToday && styles.dayTextToday,
+                  styles.dayCircle,
+                  cell.isToday && styles.dayCircleToday,
+                  cell.isSelected && styles.dayCircleSelected,
                 ]}>
-                {cell.day}
-              </Text>
+                <Text
+                  style={[
+                    styles.dayText,
+                    cell.weekday === 0 && styles.dayTextSunday,
+                    cell.weekday === 6 && styles.dayTextSaturday,
+                    cell.isToday && styles.dayTextToday,
+                    cell.isSelected && styles.dayTextSelected,
+                  ]}>
+                  {cell.day}
+                </Text>
+              </View>
             </TouchableOpacity>
           );
         })}
@@ -117,7 +142,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingTop: 24,
-    paddingHorizontal: 24,
+    paddingHorizontal: 12,
     backgroundColor: '#FFFFFF',
   },
   title: {
@@ -147,21 +172,40 @@ const styles = StyleSheet.create({
   },
   dayCell: {
     width: `${100 / 7}%`,
-    paddingVertical: 12,
+    paddingVertical: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 999,
   },
-  dayCellToday: {
-    backgroundColor: '#111827',
+  dayCircle: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dayCircleToday: {
+    backgroundColor: '#E0F2FE', // 오늘: 하늘색 배경
   },
   dayText: {
     fontSize: 14,
     color: '#111827',
   },
+  dayTextSunday: {
+    color: '#DC2626',
+  },
+  dayTextSaturday: {
+    color: '#2563EB',
+  },
   dayTextToday: {
-    color: '#FFFFFF',
+    color: '#0F172A',
     fontWeight: '600',
+  },
+  dayCircleSelected: {
+    backgroundColor: '#0EA5E9', // 현재 보고 있는 날짜: 진한 파란색
+  },
+  dayTextSelected: {
+    color: '#FFFFFF',
+    fontWeight: '700',
   },
 });
 

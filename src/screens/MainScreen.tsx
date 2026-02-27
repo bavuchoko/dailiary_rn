@@ -1,5 +1,12 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  FlatList,
+  Platform,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type Props = {
@@ -56,15 +63,19 @@ export const MainScreen: React.FC<Props> = ({
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top + 8 }]}>
+    <View
+      style={[
+        styles.container,
+        {
+          paddingTop:
+            insets.top + (Platform.OS === 'android' ? 24 : 8),
+        },
+      ]}>
       <View style={styles.weekContainer}>
-        <FlatList
-          data={week}
-          horizontal
-          keyExtractor={item => item.key}
-          showsHorizontalScrollIndicator={false}
-          renderItem={({ item }) => (
+        <View style={styles.weekRow}>
+          {week.map(item => (
             <View
+              key={item.key}
               style={[
                 styles.weekItem,
                 item.isToday && styles.weekItemTodayContainer,
@@ -84,8 +95,8 @@ export const MainScreen: React.FC<Props> = ({
                 {item.date}
               </Text>
             </View>
-          )}
-        />
+          ))}
+        </View>
       </View>
 
       <View style={styles.cardRow}>
@@ -112,12 +123,16 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   weekItem: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 16,
-    paddingHorizontal: 12,
+    paddingHorizontal: 4,
     paddingVertical: 8,
-    marginRight: 8,
+  },
+  weekRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
   weekItemTodayContainer: {
     backgroundColor: '#111827',

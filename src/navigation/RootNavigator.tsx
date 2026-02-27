@@ -1,7 +1,10 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import {
+  createBottomTabNavigator,
+  type BottomTabBarButtonProps,
+} from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import FeatherIcon from 'react-native-vector-icons/Feather';
 
@@ -100,34 +103,13 @@ const TabBarItem = ({
   </View>
 );
 
-const CenterAddButton = ({
-                             onPress,
-                             style,
-                         }: {
-    onPress?: () => void;
-    style?: any;
-}) => (
-    <TouchableOpacity
-        style={[
-            style,
-            {
-                position: 'absolute',       // 절대 위치
-                left: '50%',                // 화면 가로 중앙
-                transform: [{ translateX: -30 }], // 버튼 너비 절반만큼 이동
-                            // 탭 바 위쪽 간격
-                width: 60,
-                height: 60,
-                borderRadius: 30,
-                backgroundColor: '#343636',
-                justifyContent: 'center',
-                alignItems: 'center',
-            },
-        ]}
-        activeOpacity={0.8}
-        onPress={onPress}
-    >
-        <Text style={{ color: 'white', fontSize: 28 }}>+</Text>
-    </TouchableOpacity>
+const CenterAddButton: React.FC<BottomTabBarButtonProps> = ({ onPress }) => (
+  <TouchableOpacity
+    style={styles.centerButton}
+    activeOpacity={0.8}
+    onPress={onPress}>
+    <Text style={styles.centerButtonText}>+</Text>
+  </TouchableOpacity>
 );
 
 export const RootNavigator = () => {
