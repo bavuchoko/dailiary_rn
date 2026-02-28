@@ -7,8 +7,11 @@ export async function getAllEntries(): Promise<DiaryEntry[]> {
   try {
     const raw = await AsyncStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
-    const list = JSON.parse(raw) as DiaryEntry[];
-    return Array.isArray(list) ? list : [];
+    const list = JSON.parse(raw) as (Omit<DiaryEntry, 'tags'> & { tags?: string[] })[];
+    return (Array.isArray(list) ? list : []).map(e => ({
+      ...e,
+      tags: e.tags ?? [],
+    })) as DiaryEntry[];
   } catch {
     return [];
   }
@@ -37,6 +40,7 @@ export async function addEntry(entry: {
   date: string;
   text: string;
   imageUris: string[];
+  tags?: string[];
 }): Promise<DiaryEntry> {
   const all = await getAllEntries();
   const newEntry: DiaryEntry = {
@@ -44,6 +48,7 @@ export async function addEntry(entry: {
     date: entry.date,
     text: entry.text.trim(),
     imageUris: entry.imageUris ?? [],
+    tags: entry.tags ?? [],
     createdAt: Date.now(),
   };
   all.push(newEntry);
@@ -58,7 +63,7 @@ export async function getEntryById(id: string): Promise<DiaryEntry | null> {
 
 export async function updateEntry(
   id: string,
-  updates: { text?: string; imageUris?: string[] },
+  updates: { text?: string; imageUris?: string[]; tags?: string[] },
 ): Promise<DiaryEntry | null> {
   const all = await getAllEntries();
   const idx = all.findIndex(e => e.id === id);
@@ -68,6 +73,7 @@ export async function updateEntry(
     ...updates,
     text: updates.text !== undefined ? updates.text.trim() : all[idx].text,
     imageUris: updates.imageUris ?? all[idx].imageUris,
+    tags: updates.tags ?? all[idx].tags,
   };
   await saveAllEntries(all);
   return all[idx];

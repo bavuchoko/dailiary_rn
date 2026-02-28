@@ -75,7 +75,27 @@ export const DiaryReadScreen: React.FC<Props> = ({ route, navigation }) => {
   const isAnimatingRef = useRef(false);
   const [photoViewerVisible, setPhotoViewerVisible] = useState(false);
   const [photoViewerIndex, setPhotoViewerIndex] = useState(0);
+  const [entryMetaLayout, setEntryMetaLayout] = useState<
+    Record<
+      string,
+      { containerWidth?: number; lastLineWidth?: number; metaWidth?: number }
+    >
+  >({});
   const { width: screenWidth } = useWindowDimensions();
+
+  const getMetaOnNextLine = (entryId: string) => {
+    const layout = entryMetaLayout[entryId];
+    if (
+      !layout ||
+      layout.containerWidth == null ||
+      layout.lastLineWidth == null ||
+      layout.metaWidth == null
+    )
+      return true;
+    const { containerWidth, lastLineWidth, metaWidth } = layout;
+    const gap = 8;
+    return lastLineWidth + gap + metaWidth > containerWidth;
+  };
 
   const dateStr = getDateString(currentDate);
 
@@ -361,26 +381,94 @@ export const DiaryReadScreen: React.FC<Props> = ({ route, navigation }) => {
                         styles.entryBlock,
                         index < entries.length - 1 && styles.entryBlockBorder,
                       ]}>
-                      <View style={styles.entryMeta}>
-                        <Text style={styles.entryTime}>
-                          {formatEntryTime(entry.createdAt)}
+                      <View
+                        style={styles.entryBodyWrap}
+                        onLayout={ev => {
+                          const w = ev.nativeEvent.layout.width;
+                          setEntryMetaLayout(prev => ({
+                            ...prev,
+                            [entry.id]: {
+                              ...prev[entry.id],
+                              containerWidth: w,
+                            },
+                          }));
+                        }}>
+                        <Text
+                          style={styles.entryText}
+                          onTextLayout={ev => {
+                            const lines = ev.nativeEvent.lines;
+                            if (lines.length > 0) {
+                              const last = lines[lines.length - 1];
+                              const lastW = last.width;
+                              setEntryMetaLayout(prev => ({
+                                ...prev,
+                                [entry.id]: {
+                                  ...prev[entry.id],
+                                  lastLineWidth: lastW,
+                                },
+                              }));
+                            }
+                          }}>
+                          {entry.text}
                         </Text>
-                        <View style={styles.entryActions}>
-                          <TouchableOpacity
-                            onPress={() => handlePressEdit(entry.id)}
-                            style={styles.entryActionBtn}
-                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                            <PencilCheckIcon size={18} color="#8e9299" />
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            onPress={() => handlePressDelete(entry.id)}
-                            style={styles.entryActionBtn}
-                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                            <BackspaceIcon size={18} color="#eb9d9d" />
-                          </TouchableOpacity>
+                        <View
+                          style={
+                            getMetaOnNextLine(entry.id)
+                              ? styles.entryMetaRowNextLine
+                              : styles.entryMetaRow
+                          }
+                          pointerEvents="box-none">
+                          <View style={styles.entryMetaRowInner}>
+                            <View style={styles.entryMetaSpacer} />
+                            <View
+                              style={styles.entryMetaContentWrap}
+                              onLayout={ev => {
+                                const w = ev.nativeEvent.layout.width;
+                                setEntryMetaLayout(prev => ({
+                                  ...prev,
+                                  [entry.id]: {
+                                    ...prev[entry.id],
+                                    metaWidth: w,
+                                  },
+                                }));
+                              }}>
+                              {(entry.tags?.length ?? 0) > 0 && (
+                                <View style={styles.entryMetaTagsWrap}>
+                                  {(entry.tags ?? []).map((tag, i) => (
+                                    <View
+                                      key={`${entry.id}-tag-${i}`}
+                                      style={styles.entryTag}>
+                                      <Text
+                                        style={styles.entryTagText}
+                                        numberOfLines={1}
+                                        ellipsizeMode="tail">
+                                        {tag}
+                                      </Text>
+                                    </View>
+                                  ))}
+                                </View>
+                              )}
+                              <View style={styles.entryMetaActions} pointerEvents="box-none">
+                                <Text style={styles.entryTime}>
+                                  {formatEntryTime(entry.createdAt)}
+                                </Text>
+                                <TouchableOpacity
+                                  onPress={() => handlePressEdit(entry.id)}
+                                  style={styles.entryActionBtn}
+                                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                                  <PencilCheckIcon size={18} color="#8e9299" />
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                  onPress={() => handlePressDelete(entry.id)}
+                                  style={styles.entryActionBtn}
+                                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                                  <BackspaceIcon size={18} color="#eb9d9d" />
+                                </TouchableOpacity>
+                              </View>
+                            </View>
+                          </View>
                         </View>
                       </View>
-                      <Text style={styles.entryText}>{entry.text}</Text>
                     </View>
                   ))}
                 </ScrollView>
@@ -518,35 +606,89 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   entryBlock: {
-    paddingBottom:6,
-    marginBottom: 6,
+    paddingBottom: 8,
+    marginBottom: 8,
   },
   entryBlockBorder: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E5E7EB',
   },
-  entryMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 0,
-  },
-  entryTime: {
-    fontSize: 13,
-    color: '#6B7280',
-  },
-  entryActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  entryActionBtn: {
-    marginLeft: 8,
-    padding: 6,
+  entryBodyWrap: {
+    position: 'relative',
   },
   entryText: {
     fontSize: 16,
     lineHeight: 24,
     color: '#111827',
+  },
+  entryMetaRow: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+  },
+  entryMetaRowNextLine: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    minHeight: 24,
+  },
+  entryMetaRowInner: {
+    height:24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'nowrap',
+    width: '100%',
+  },
+  entryMetaSpacer: {
+    flex: 1,
+    minWidth: 0,
+  },
+  entryMetaContentWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexShrink: 0,
+  },
+  entryMetaTagsWrap: {
+    flexDirection: 'row',
+    flexWrap: 'nowrap',
+    minWidth: 0,
+    marginRight: 8,
+    alignItems: 'center',
+    overflow: 'hidden',
+    flexShrink: 1,
+  },
+  entryMetaActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexShrink: 0,
+  },
+  entryTime: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginRight: 4,
+  },
+  entryActionBtn: {
+    marginLeft: 4,
+    padding: 6,
+  },
+  entryTagRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: 8,
+  },
+  entryTag: {
+    backgroundColor: '#E5E7EB',
+    paddingVertical: 2,
+    paddingHorizontal: 8,
+    borderRadius: 10,
+    marginRight: 6,
+    maxWidth: 100,
+    minWidth: 0,
+    flexShrink: 1,
+  },
+  entryTagText: {
+    fontSize: 12,
+    color: '#6B7280',
   },
   bodyWrapper: {
     flex: 1,

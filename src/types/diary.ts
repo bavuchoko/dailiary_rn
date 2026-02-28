@@ -3,5 +3,6 @@ export type DiaryEntry = {
   date: string;
   text: string;
   imageUris: string[];
+  tags: string[];
   createdAt: number;
 };

@@ -232,7 +232,7 @@ const TabsNavigator = ({ navigation }: { navigation: any }) => {
                     />
                 ),
                 tabBarButton: props => {
-                    const { onPress, style, ...rest } = props;
+                    const { style, ...rest } = props;
                     const safeRest = Object.fromEntries(
                         Object.entries(rest).map(([k, v]) => [k, v === null ? undefined : v])
                     );
