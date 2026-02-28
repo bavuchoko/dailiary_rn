@@ -135,8 +135,8 @@ export type YearStats = {
   topMonth: number | null;
   /** 월별 일기 건수 [1월, 2월, ..., 12월] */
   monthCounts: number[];
-  /** 연도 내 가장 많이 달린 태그 순위 3위까지 [1위, 2위, 3위] */
-  topTags: [string | null, string | null, string | null];
+  /** 연도 내 가장 많이 달린 태그 순위 3위까지 (동점이면 같은 순위) */
+  topTags: Array<{ tag: string; count: number; rank: number }>;
 };
 
 /** 특정 연도의 통계 */
@@ -171,12 +171,19 @@ export async function getYearStats(year: number): Promise<YearStats> {
 
   const monthCounts = Array.from({ length: 12 }, (_, i) => monthCount[i + 1] ?? 0);
 
-  const tagEntries = Object.entries(tagCount).sort((a, b) => b[1] - a[1]);
-  const topTags: [string | null, string | null, string | null] = [
-    tagEntries[0]?.[0] ?? null,
-    tagEntries[1]?.[0] ?? null,
-    tagEntries[2]?.[0] ?? null,
-  ];
+  const tagEntries = Object.entries(tagCount).sort((a, b) => {
+    if (b[1] !== a[1]) return b[1] - a[1];
+    return a[0].localeCompare(b[0]);
+  });
+  const topTags: Array<{ tag: string; count: number; rank: number }> = [];
+  let prevCount = -1;
+  let rank = 0;
+  for (const [tag, count] of tagEntries) {
+    if (topTags.length >= 3) break;
+    if (count !== prevCount) rank += 1;
+    topTags.push({ tag, count, rank });
+    prevCount = count;
+  }
 
   return {
     daysWithEntries: dateSet.size,
