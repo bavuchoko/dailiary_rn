@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import {
@@ -8,15 +8,25 @@ import {
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import FeatherIcon from 'react-native-vector-icons/Feather';
 
+import { HomeIcon } from '../components/icons/HomeIcon';
+import { CloudIcon } from '../components/icons/CloudIcon';
+import { SearchIcon } from '../components/icons/SearchIcon';
+import { StatsIcon } from '../components/icons/StatsIcon';
+import { HelpCircleIcon } from '../components/icons/HelpCircleIcon';
+
 import { MainScreen } from '../screens/MainScreen';
 import { DiaryReadScreen } from '../screens/DiaryReadScreen';
+import { DiaryWriteScreen } from '../screens/DiaryWriteScreen';
 import { YearCalendarScreen } from '../screens/YearCalendarScreen';
 import { MonthCalendarScreen } from '../screens/MonthCalendarScreen';
 import { SplashScreen } from '../screens/SplashScreen';
-import type { HomeStackParamList } from './types';
+import { TabScreenLayout } from '../components/TabScreenLayout';
+import { BackupPopupMenu } from '../components/BackupPopupMenu';
+import type { HomeStackParamList, RootStackParamList } from './types';
 
 const HomeStack = createNativeStackNavigator<HomeStackParamList>();
 const Tab = createBottomTabNavigator();
+const RootStack = createNativeStackNavigator<RootStackParamList>();
 
 const AppTheme = {
   ...DefaultTheme,
@@ -73,27 +83,35 @@ const MainScreenWrapper = ({ navigation }: { navigation: any }) => {
 };
 
 const PlaceholderScreen = ({ label }: { label: string }) => (
-  <View style={styles.placeholderContainer}>
-    <Text style={styles.placeholderText}>{label}</Text>
-  </View>
+  <TabScreenLayout>
+    <View style={styles.placeholderContainer}>
+      <Text style={styles.placeholderText}>{label}</Text>
+    </View>
+  </TabScreenLayout>
 );
 
 const TabBarItem = ({
   label,
   iconName,
   focused,
+  renderIcon,
 }: {
   label: string;
-  iconName: string;
+  iconName?: string;
   focused: boolean;
+  renderIcon?: (color: string) => React.ReactNode;
 }) => (
   <View style={styles.tabItem}>
-    <FeatherIcon
-      name={iconName}
-      size={24}
-      color={focused ? '#111827' : '#9CA3AF'}
-      style={styles.tabIcon}
-    />
+    {renderIcon ? (
+      renderIcon(focused ? '#111827' : '#9CA3AF')
+    ) : (
+      <FeatherIcon
+        name={iconName as string}
+        size={24}
+        color={focused ? '#111827' : '#9CA3AF'}
+        style={styles.tabIcon}
+      />
+    )}
     <Text
       style={[styles.tabLabel, focused && styles.tabFocusedText]}
       numberOfLines={1}
@@ -103,88 +121,155 @@ const TabBarItem = ({
   </View>
 );
 
-const CenterAddButton: React.FC<BottomTabBarButtonProps> = ({ onPress }) => (
+const CenterHomeButton: React.FC<BottomTabBarButtonProps> = ({ onPress }) => (
   <TouchableOpacity
-    style={styles.centerButton}
+    style={styles.centerHomeButton}
     activeOpacity={0.8}
     onPress={onPress}>
-    <Text style={styles.centerButtonText}>+</Text>
+    <HomeIcon color="#f5f3f4" size={34} />
   </TouchableOpacity>
 );
+
+const TabsNavigator = ({ navigation }: { navigation: any }) => {
+  const [backupPopupVisible, setBackupPopupVisible] = useState(false);
+
+  return (
+    <>
+    <Tab.Navigator
+      initialRouteName="HomeTab"
+      screenOptions={{
+        headerShown: false,
+        tabBarStyle: {
+          height: Platform.OS === 'ios' ? 92 : 82,
+          paddingLeft: 15,
+          paddingRight: 15,
+          borderTopWidth: 0,
+          backgroundColor: '#F3F4F6',
+        },
+        tabBarItemStyle: {
+          paddingTop: 7,
+          paddingBottom: 2,
+        },
+      }}>
+
+      <Tab.Screen
+        name="ReminderTab"
+        children={() => <PlaceholderScreen label="도구" />}
+        options={{
+          title: '도구',
+          tabBarLabel: () => null,
+          tabBarIcon: ({ focused }) => (
+            <TabBarItem
+              label="도구"
+              focused={focused}
+              renderIcon={color => <HelpCircleIcon color={color} size={24} />}
+            />
+          ),
+        }}
+      />
+        <Tab.Screen
+            name="SearchTab"
+            children={() => <PlaceholderScreen label="검색" />}
+            options={{
+                title: '검색',
+                tabBarLabel: () => null,
+                tabBarIcon: ({ focused }) => (
+                    <TabBarItem
+                        label="검색"
+                        focused={focused}
+                        renderIcon={color => <SearchIcon color={color} size={24} />}
+                    />
+                ),
+            }}
+        />
+      <Tab.Screen
+        name="HomeTab"
+        component={HomeStackNavigator}
+        options={{
+          title: '홈',
+          tabBarLabel: () => null,
+          tabBarIcon: () => null,
+          tabBarButton: props => (
+            <CenterHomeButton
+              {...props}
+              onPress={() =>
+                navigation.navigate('Tabs', {
+                  screen: 'HomeTab',
+                  params: { screen: 'Main' },
+                })
+              }
+            />
+          ),
+        }}
+      />
+        <Tab.Screen
+            name="StatsTab"
+            children={() => <PlaceholderScreen label="통계" />}
+            options={{
+                title: '통계',
+                tabBarLabel: () => null,
+                tabBarIcon: ({ focused }) => (
+                    <TabBarItem
+                        label="통계"
+                        focused={focused}
+                        renderIcon={color => <StatsIcon color={color} size={24} />}
+                    />
+                ),
+            }}
+        />
+
+        <Tab.Screen
+            name="BackupTab"
+            children={() => null}
+            options={{
+                title: '백업',
+                tabBarLabel: () => null,
+                tabBarIcon: ({ focused }) => (
+                    <TabBarItem
+                        label="백업"
+                        focused={focused}
+                        renderIcon={color => <CloudIcon color={color} size={24} />}
+                    />
+                ),
+                tabBarButton: props => {
+                    const { onPress, style, ...rest } = props;
+                    const safeRest = Object.fromEntries(
+                        Object.entries(rest).map(([k, v]) => [k, v === null ? undefined : v])
+                    );
+                    return (
+                        <TouchableOpacity
+                            {...safeRest}
+                            onPress={() => setBackupPopupVisible(true)}
+                            style={[styles.backupTabButton, style]}
+                        />
+                    );
+                },
+            }}
+        />
+
+    </Tab.Navigator>
+    <BackupPopupMenu
+        visible={backupPopupVisible}
+        onClose={() => setBackupPopupVisible(false)}
+    />
+    </>
+  );
+};
 
 export const RootNavigator = () => {
   return (
     <NavigationContainer theme={AppTheme}>
-      <Tab.Navigator
-        screenOptions={{
-          headerShown: false,
-          tabBarStyle: {
-            height: Platform.OS === 'ios' ? 92 : 82,
-            paddingLeft: 15,
-            paddingRight: 15,
-            borderTopWidth: 0,
-            backgroundColor: '#F3F4F6',
-          },
-          tabBarItemStyle: {
-            paddingTop: 7,
-            paddingBottom: 2,
-          },
-        }}>
-        <Tab.Screen
-          name="HomeTab"
-          component={HomeStackNavigator}
+      <RootStack.Navigator screenOptions={{ headerShown: false }}>
+        <RootStack.Screen name="Tabs" component={TabsNavigator} />
+        <RootStack.Screen
+          name="DiaryWrite"
+          component={DiaryWriteScreen}
           options={{
-            title: '홈',
-            tabBarLabel: () => null,
-            tabBarIcon: ({ focused }) => (
-              <TabBarItem label="홈" iconName="home" focused={focused} />
-            ),
+            // 기본 카드 전환 애니메이션으로 전체 화면 전환
+            presentation: 'card',
           }}
         />
-        <Tab.Screen
-          name="ReminderTab"
-        children={() => <PlaceholderScreen label="리마" />}
-          options={{
-          title: '리마',
-            tabBarLabel: () => null,
-            tabBarIcon: ({ focused }) => (
-            <TabBarItem label="리마" iconName="bell" focused={focused} />
-            ),
-          }}
-        />
-        <Tab.Screen
-          name="AddTab"
-          children={() => <PlaceholderScreen label="작성" />}
-          options={{
-            title: '',
-            tabBarLabel: () => null,
-            tabBarIcon: () => null,
-            tabBarButton: props => <CenterAddButton {...props} />,
-          }}
-        />
-        <Tab.Screen
-          name="SearchTab"
-          children={() => <PlaceholderScreen label="검색" />}
-          options={{
-            title: '검색',
-            tabBarLabel: () => null,
-            tabBarIcon: ({ focused }) => (
-              <TabBarItem label="검색" iconName="search" focused={focused} />
-            ),
-          }}
-        />
-        <Tab.Screen
-          name="StatsTab"
-          children={() => <PlaceholderScreen label="통계" />}
-          options={{
-            title: '통계',
-            tabBarLabel: () => null,
-            tabBarIcon: ({ focused }) => (
-              <TabBarItem label="통계" iconName="bar-chart-2" focused={focused} />
-            ),
-          }}
-        />
-      </Tab.Navigator>
+      </RootStack.Navigator>
     </NavigationContainer>
   );
 };
@@ -199,7 +284,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#6B7280',
   },
-  centerButton: {
+  centerHomeButton: {
     width: 64,
     height: 64,
     borderRadius: 32,
@@ -213,11 +298,6 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 6,
     transform: [{ translateX: 4 }],
-  },
-  centerButtonText: {
-    fontSize: 32,
-    color: '#FFFFFF',
-    marginTop: -2,
   },
   tabItem: {
     alignItems: 'center',
@@ -235,6 +315,14 @@ const styles = StyleSheet.create({
   tabFocusedText: {
     color: '#111827',
     fontWeight: '600',
+  },
+  backupTabButton: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    paddingTop: 7,
+    paddingBottom: 2,
+    paddingHorizontal: 4,
   },
 });
 

@@ -14,3 +14,8 @@ export type HomeStackParamList = {
   };
 };
 
+export type RootStackParamList = {
+  Tabs: undefined;
+  DiaryWrite: { date?: string; entryId?: string } | undefined;
+};
+

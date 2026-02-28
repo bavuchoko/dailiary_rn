@@ -9,12 +9,29 @@ import {
   PanResponderGestureState,
   Animated,
   Dimensions,
+  ScrollView,
+  Image,
+  ImageBackground,
+  Modal,
+  FlatList,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import FeatherIcon from 'react-native-vector-icons/Feather';
+import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import type { HomeStackParamList } from '../navigation/types';
+import { CalendarWeekIcon } from '../components/icons/CalendarWeekIcon';
+import { PencilCheckIcon } from '../components/icons/PencilCheckIcon';
+import { BackspaceIcon } from '../components/icons/BackspaceIcon';
+import { CircleXIcon } from '../components/icons/CircleXIcon';
+import {
+  getEntriesByDate,
+  getDateString,
+  deleteEntry,
+} from '../services/diaryStorage';
+import type { DiaryEntry } from '../types/diary';
 
 type Props = NativeStackScreenProps<HomeStackParamList, 'DiaryRead'>;
 
@@ -25,6 +42,13 @@ function formatDate(date: Date) {
   const weekdayLabels = ['일', '월', '화', '수', '목', '금', '토'];
   const weekday = weekdayLabels[date.getDay()];
   return `${year}년 ${month}월 ${day}일 (${weekday})`;
+}
+
+function formatEntryTime(createdAt: number) {
+  const d = new Date(createdAt);
+  const h = `${d.getHours()}`.padStart(2, '0');
+  const m = `${d.getMinutes()}`.padStart(2, '0');
+  return `${h}:${m}`;
 }
 
 function addDays(date: Date, amount: number) {
@@ -45,9 +69,30 @@ export const DiaryReadScreen: React.FC<Props> = ({ route, navigation }) => {
     [route.params?.date],
   );
   const [currentDate, setCurrentDate] = useState<Date>(initialDate);
+  const [entries, setEntries] = useState<DiaryEntry[]>([]);
   const translateX = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(0)).current;
   const isAnimatingRef = useRef(false);
+  const [photoViewerVisible, setPhotoViewerVisible] = useState(false);
+  const [photoViewerIndex, setPhotoViewerIndex] = useState(0);
+  const { width: screenWidth } = useWindowDimensions();
+
+  const dateStr = getDateString(currentDate);
+
+  const contentWidth = screenWidth - 48;
+  const photoGap = 8;
+  const photoSize = (contentWidth - photoGap * 3) / 4;
+
+  useFocusEffect(
+    React.useCallback(() => {
+      getEntriesByDate(currentDate).then(setEntries);
+    }, [dateStr]),
+  );
+
+  const allPhotos = useMemo(
+    () => entries.flatMap(e => e.imageUris),
+    [entries],
+  );
 
   const runSlideTransition = (
     direction: 'up' | 'down' | 'left' | 'right',
@@ -166,22 +211,61 @@ export const DiaryReadScreen: React.FC<Props> = ({ route, navigation }) => {
     });
   };
 
+  const handlePressWrite = () => {
+    const root = (navigation as any).getParent()?.getParent();
+    root?.navigate('DiaryWrite', { date: dateStr });
+  };
+
+  const handlePressEdit = (entryId: string) => {
+    const root = (navigation as any).getParent()?.getParent();
+    root?.navigate('DiaryWrite', { date: dateStr, entryId });
+  };
+
+  const handlePressDelete = async (entryId: string) => {
+    const ok = await deleteEntry(entryId);
+    if (ok) getEntriesByDate(currentDate).then(setEntries);
+  };
+
+  const openPhotoViewer = (index: number) => {
+    setPhotoViewerIndex(index);
+    setPhotoViewerVisible(true);
+  };
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-      <View style={styles.container} {...panResponder.panHandlers}>
+      <View style={styles.container}>
         <View style={styles.topBar}>
-          <TouchableOpacity
-            onPress={handleOpenCalendar}
-            style={styles.topBarLeft}>
-            <FeatherIcon name="calendar" size={22} color="#6B7280" />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={handlePressToday} style={styles.todayButton}>
-            <Text style={styles.topBarToday}>오늘</Text>
+          <View style={styles.topBarLeftGroup}>
+            <TouchableOpacity
+              onPress={handleOpenCalendar}
+              style={styles.topBarLeft}>
+              <CalendarWeekIcon size={22} color="#6B7280" />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handlePressToday} style={styles.todayButton}>
+              <Text style={styles.topBarToday}>오늘</Text>
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity onPress={handlePressWrite} style={styles.writeButton}>
+            <Text style={styles.writeButtonText}>쓰기</Text>
           </TouchableOpacity>
         </View>
 
-        <View style={styles.dateHeader}>
-          <Text style={styles.dateHeaderText}>{formatDate(currentDate)}</Text>
+        <View style={styles.dateHeader} {...panResponder.panHandlers}>
+          {allPhotos.length > 0 ? (
+            <ImageBackground
+              source={{ uri: allPhotos[0] }}
+              style={styles.dateHeaderBackground}
+              resizeMode="cover">
+              <View style={styles.dateHeaderOverlay} />
+              <View style={styles.dateHeaderInner}>
+                <Text style={styles.dateHeaderText}>{formatDate(currentDate)}</Text>
+              </View>
+            </ImageBackground>
+          ) : (
+            <View style={styles.dateHeaderInner}>
+              <Text style={styles.dateHeaderText}>{formatDate(currentDate)}</Text>
+            </View>
+          )}
         </View>
 
         <View style={styles.bodyWrapper}>
@@ -194,12 +278,113 @@ export const DiaryReadScreen: React.FC<Props> = ({ route, navigation }) => {
               ],
             }}>
             <View style={styles.content}>
-              <Text style={styles.diaryPlaceholder}>
-                해당 날짜의 일기가 없습니다.
-              </Text>
-              <Text style={styles.helperText}>
-                위/아래로 스와이프하면 하루씩, 좌/우로 스와이프하면 1년씩 이동합니다.
-              </Text>
+              {allPhotos.length > 0 && (
+                <View style={styles.photoGrid}>
+                  {allPhotos.map((uri, index) => (
+                    <TouchableOpacity
+                      key={`${uri}-${index}`}
+                      style={[
+                        styles.photoThumbWrap,
+                        {
+                          width: photoSize,
+                          height: photoSize,
+                          marginRight: (index + 1) % 4 === 0 ? 0 : photoGap,
+                          marginBottom: photoGap,
+                        },
+                      ]}
+                      onPress={() => openPhotoViewer(index)}
+                      activeOpacity={0.8}>
+                      <Image
+                        source={{ uri }}
+                        style={[styles.photoThumb, { width: photoSize, height: photoSize }]}
+                        resizeMode="cover"
+                      />
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+
+              <Modal
+                visible={photoViewerVisible}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setPhotoViewerVisible(false)}>
+                <View style={styles.photoViewerOverlay}>
+                  <TouchableOpacity
+                    style={styles.photoViewerClose}
+                    onPress={() => setPhotoViewerVisible(false)}
+                    hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}>
+                    <CircleXIcon size={28} color="#FFF" />
+                  </TouchableOpacity>
+                  <FlatList
+                    data={allPhotos}
+                    horizontal
+                    pagingEnabled
+                    showsHorizontalScrollIndicator={false}
+                    initialScrollIndex={photoViewerIndex}
+                    initialNumToRender={allPhotos.length}
+                    getItemLayout={(_: unknown, index: number) => ({
+                      length: screenWidth,
+                      offset: screenWidth * index,
+                      index,
+                    })}
+                    keyExtractor={(_, i) => `photo-${i}`}
+                    renderItem={({ item: uri }) => (
+                      <View style={[styles.photoViewerSlide, { width: screenWidth }]}>
+                        <Image
+                          source={{ uri }}
+                          style={styles.photoViewerImage}
+                          resizeMode="contain"
+                        />
+                      </View>
+                    )}
+                  />
+                </View>
+              </Modal>
+              {entries.length === 0 ? (
+                <>
+                  <Text style={styles.diaryPlaceholder}>
+                    해당 날짜의 일기가 없습니다.
+                  </Text>
+                  <Text style={styles.helperText}>
+                    위/아래로 스와이프하면 하루씩, 좌/우로 스와이프하면 1년씩 이동합니다.
+                  </Text>
+                </>
+              ) : (
+                <ScrollView
+                  style={styles.entriesScroll}
+                  showsVerticalScrollIndicator={false}>
+                  {entries.map((entry, index) => (
+                    <View
+                      key={entry.id}
+                      style={[
+                        styles.entryBlock,
+                        index < entries.length - 1 && styles.entryBlockBorder,
+                      ]}>
+                      <View style={styles.entryMeta}>
+                        <Text style={styles.entryTime}>
+                          {formatEntryTime(entry.createdAt)}
+                        </Text>
+                        <View style={styles.entryActions}>
+                          <TouchableOpacity
+                            onPress={() => handlePressEdit(entry.id)}
+                            style={styles.entryActionBtn}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                            <PencilCheckIcon size={18} color="#8e9299" />
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            onPress={() => handlePressDelete(entry.id)}
+                            style={styles.entryActionBtn}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                            <BackspaceIcon size={18} color="#eb9d9d" />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                      <Text style={styles.entryText}>{entry.text}</Text>
+                    </View>
+                  ))}
+                </ScrollView>
+              )}
             </View>
           </Animated.View>
         </View>
@@ -222,11 +407,15 @@ const styles = StyleSheet.create({
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-start',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 8,
     backgroundColor: '#F9FAFB',
+  },
+  topBarLeftGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   topBarLeft: {
     paddingHorizontal: 4,
@@ -240,20 +429,43 @@ const styles = StyleSheet.create({
   todayButton: {
     marginLeft: 8,
   },
+  writeButton: {
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+  },
+  writeButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#111827',
+  },
   dateHeader: {
     backgroundColor: '#111827',
+    height: 180,
+    overflow: 'hidden',
+  },
+  dateHeaderInner: {
+    flex: 1,
     paddingHorizontal: 24,
     paddingTop: 24,
     paddingBottom: 24,
-    height: 180,
     alignItems: 'flex-end',
     justifyContent: 'flex-end',
+  },
+  dateHeaderBackground: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+  },
+  dateHeaderOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.45)',
   },
   dateHeaderText: {
     fontSize: 20,
     fontWeight: '700',
     color: '#FFFFFF',
     textAlign: 'right',
+    zIndex: 1,
   },
   content: {
     flex: 1,
@@ -266,6 +478,75 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.12,
     shadowRadius: 16,
     elevation: 5,
+  },
+  photoGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: 16,
+  },
+  photoThumbWrap: {
+    borderRadius: 8,
+    overflow: 'hidden',
+    backgroundColor: '#F3F4F6',
+  },
+  photoThumb: {
+    borderRadius: 8,
+    backgroundColor: '#F3F4F6',
+  },
+  photoViewerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.92)',
+    justifyContent: 'center',
+  },
+  photoViewerClose: {
+    position: 'absolute',
+    top: 50,
+    right: 16,
+    zIndex: 10,
+    padding: 8,
+  },
+  photoViewerSlide: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  photoViewerImage: {
+    width: '100%',
+    height: '100%',
+  },
+  entriesScroll: {
+    flex: 1,
+  },
+  entryBlock: {
+    paddingBottom:6,
+    marginBottom: 6,
+  },
+  entryBlockBorder: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#E5E7EB',
+  },
+  entryMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 0,
+  },
+  entryTime: {
+    fontSize: 13,
+    color: '#6B7280',
+  },
+  entryActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  entryActionBtn: {
+    marginLeft: 8,
+    padding: 6,
+  },
+  entryText: {
+    fontSize: 16,
+    lineHeight: 24,
+    color: '#111827',
   },
   bodyWrapper: {
     flex: 1,

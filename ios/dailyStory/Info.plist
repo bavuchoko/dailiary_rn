@@ -56,5 +56,11 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
+	<key>UIAppFonts</key>
+	<array>
+		<string>Pacifico-Regular.ttf</string>
+	</array>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>일기에 사진을 추가하기 위해 사진 라이브러리 접근이 필요합니다.</string>
 </dict>
 </plist>

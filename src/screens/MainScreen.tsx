@@ -71,6 +71,7 @@ export const MainScreen: React.FC<Props> = ({
             insets.top + (Platform.OS === 'android' ? 24 : 8),
         },
       ]}>
+      <Text style={styles.titleText}>Daily Story</Text>
       <View style={styles.weekContainer}>
         <View style={styles.weekRow}>
           {week.map(item => (
@@ -118,6 +119,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingHorizontal: 24,
+  },
+  titleText: {
+    fontSize: 32,
+    color: '#111827',
+    marginBottom: 20,
+    textAlign: 'center',
+    alignSelf: 'center',
+    fontFamily: Platform.OS === 'ios' ? 'Pacifico' : 'Pacifico-Regular',
   },
   weekContainer: {
     marginBottom: 32,
