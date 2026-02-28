@@ -21,6 +21,7 @@ import { DiaryWriteScreen } from '../screens/DiaryWriteScreen';
 import { YearCalendarScreen } from '../screens/YearCalendarScreen';
 import { MonthCalendarScreen } from '../screens/MonthCalendarScreen';
 import { SplashScreen } from '../screens/SplashScreen';
+import { ToolsScreen } from '../screens/ToolsScreen';
 import { TabScreenLayout } from '../components/TabScreenLayout';
 import { BackupPopupMenu } from '../components/BackupPopupMenu';
 import type { HomeStackParamList, RootStackParamList } from './types';
@@ -159,7 +160,7 @@ const TabsNavigator = ({ navigation }: { navigation: any }) => {
 
       <Tab.Screen
         name="ReminderTab"
-        children={() => <PlaceholderScreen label="도구" />}
+        component={ToolsScreen}
         options={{
           title: '도구',
           tabBarLabel: () => null,
