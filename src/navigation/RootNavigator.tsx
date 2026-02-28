@@ -22,6 +22,8 @@ import { YearCalendarScreen } from '../screens/YearCalendarScreen';
 import { MonthCalendarScreen } from '../screens/MonthCalendarScreen';
 import { SplashScreen } from '../screens/SplashScreen';
 import { ToolsScreen } from '../screens/ToolsScreen';
+import { SearchScreen } from '../screens/SearchScreen';
+import { StatsScreen } from '../screens/StatsScreen';
 import { TabScreenLayout } from '../components/TabScreenLayout';
 import { BackupPopupMenu } from '../components/BackupPopupMenu';
 import type { HomeStackParamList, RootStackParamList } from './types';
@@ -210,7 +212,7 @@ const TabsNavigator = ({ navigation }: { navigation: any }) => {
       />
         <Tab.Screen
             name="StatsTab"
-            children={() => <PlaceholderScreen label="통계" />}
+            component={StatsScreen}
             options={{
                 title: '통계',
                 tabBarLabel: () => null,
