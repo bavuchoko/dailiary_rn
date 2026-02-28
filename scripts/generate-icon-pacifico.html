@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Daily Story App Icon - Pacifico D</title>
+  <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
+  <style>
+    body { margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #333; }
+    canvas { background: #fff; border: 1px solid #ccc; }
+  </style>
+</head>
+<body>
+  <canvas id="c" width="1024" height="1024"></canvas>
+  <script>
+    const c = document.getElementById('c');
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, 1024, 1024);
+    ctx.fillStyle = '#000000';
+    ctx.font = 'bold 720px Pacifico, cursive';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('D', 512, 540);
+    // Right-click canvas → Save image as → app-icon-source.png
+  </script>
+</body>
+</html>
